@@ -4,7 +4,7 @@ urlcolor: purple
 citecolor: blue
 ...
 
-# 机器学习
+# 深度学习
 
 ## 卷积神经网络
 
@@ -42,7 +42,7 @@ citecolor: blue
 
 ### [Learning both Weights and Connections for Efficient Neural Networks](http://papers.nips.cc/paper/5784-learning-both-weights-and-connections-for-efficient-neural-network.pdf)
 
-`Dynamic Network Surgery for Efficient DNNs`的主要参考文献。
+是`Dynamic Network Surgery for Efficient DNNs`的主要参考文献。
 
 提出了一种去掉某种阈值以下的参数，后用更小的learning rate来重新训练（训练耗时可能是原来训练的数倍）来补偿去掉参数的做法；可以将网络大小缩小10x左右（对于VGG或LeNet)。
 
@@ -71,4 +71,4 @@ citecolor: blue
 
 这篇文章的[GitHub地址](https://github.com/yihui-he/channel-pruning)。
 
-这篇文章无法在windows server上运行，所以我没有验证。
+这篇文章我还没有验证。
