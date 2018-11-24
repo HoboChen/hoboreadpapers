@@ -6,7 +6,12 @@ citecolor: blue
 
 # G-3
 
-## [WEBSEARCH FOR A PLANET: THE GOOGLECLUSTER ARCHITECTURE](http://www.eecs.harvard.edu/~dbrooks/cs246-fall2004/google.pdf)
+## [Websearch for a Planet: The Google Cluster Architecture](http://www.eecs.harvard.edu/~dbrooks/cs246-fall2004/google.pdf)
+
+Google’s architecture features clusters of more than 15,000 **commodity** class PCs with fault-tolerant software. This architecture achieves superior performance at a fraction of the cost of a system built from fewer, but more expensive, high-end servers.
+
+**Energy efficiency and price-performance** ratio are the most important factors which influence the design.
+For energy efficiency, power consumption and cooling issues are taxing the limits of available data center power densities. Google is an example of a **throughput-oriented, parallel friendly** workload
 
 ## [MapReduce: Simplified Data Processing on Large Clusters](https://www.usenix.org/legacy/events/osdi04/tech/full_papers/dean/dean.pdf)
 
