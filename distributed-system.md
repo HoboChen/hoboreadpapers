@@ -6,6 +6,8 @@ citecolor: blue
 
 # G-3
 
+## [WEBSEARCH FOR A PLANET: THE GOOGLECLUSTER ARCHITECTURE](http://www.eecs.harvard.edu/~dbrooks/cs246-fall2004/google.pdf)
+
 ## [MapReduce: Simplified Data Processing on Large Clusters](https://www.usenix.org/legacy/events/osdi04/tech/full_papers/dean/dean.pdf)
 
 OSDI 2004。
@@ -14,7 +16,7 @@ OSDI 2004。
 
 OSDI 2006。
 
-## [The Google file system](http://www.academia.edu/download/28578273/the.google.file.system.pdf)
+## [The Google file system](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf)
 
 SOSP 2003。
 
@@ -62,3 +64,7 @@ VLDB 2018。
 # 分布式锁
 
 ## [The Chubby lock service for loosely-coupled distributed systems](http://static.usenix.org/legacy/events/osdi06/tech/full_papers/burrows/burrows.pdf)
+
+# 分布式调度
+
+## [Large-scale cluster management at Google with Borg](https://dl.acm.org/ft_gateway.cfm?ftid=1563633&id=2741964)
