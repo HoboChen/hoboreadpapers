@@ -4,11 +4,11 @@ urlcolor: purple
 citecolor: blue
 ...
 
-# 早年
+# G-3
 
 ## [MapReduce: Simplified Data Processing on Large Clusters](https://www.usenix.org/legacy/events/osdi04/tech/full_papers/dean/dean.pdf)
 
-OSDI 2004。
+OSDI 2004
 
 ## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
 
@@ -51,3 +51,7 @@ Guarantees:
 ## [Spanner: Google’s globally distributed database](https://dl.acm.org/ft_gateway.cfm?id=2491245&type=pdf)
 
 OSDI 2012。
+
+## [PolarFS: An Ultra-low Latency and Failure Resilient Distributed File System for Shared Storage Cloud Database](http://www.vldb.org/pvldb/vol11/p1849-cao.pdf)
+
+VLDB 2018。
