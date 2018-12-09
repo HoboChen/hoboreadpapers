@@ -8,8 +8,6 @@ citecolor: blue
 
 ## [Websearch for a Planet: The Google Cluster Architecture](http://www.eecs.harvard.edu/~dbrooks/cs246-fall2004/google.pdf)
 
-TODO
-
 Google’s architecture features clusters of more than 15,000 **commodity** class PCs with fault-tolerant software. This architecture achieves superior performance at a fraction of the cost of a system built from fewer, but more expensive, high-end servers.
 
 **Energy efficiency and price-performance** ratio are the most important factors which influence the design.
@@ -36,7 +34,23 @@ OSDI 2006。
 
 ## [The Google file system](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf)
 
-SOSP 2003。
+SOSP 2003.
+
+Traditional choices are reexamined and different points of design space are explored radically.
+
+1. Component failures are the norm rather than the exception.
+1. Files are huge by traditional standards as multi GB files are common.
+1. Most files are mutated by appending new data rather than overwriting existing data.
+1. Co-designing the applications and the file system API benefits the overall system.
+
+GFS provides a familiar file system interface but it does not implement fully a standard API.
+GFS support the usual operations like `create`, `delete`, `open`, `close`, `read` and `write`. Moreover, GFS has `snapshot` and `record append` operations.
+
+Q:
+
+- `record append`?
+
+
 
 ### Introduction
 
@@ -55,6 +69,8 @@ A GFS cluster consists of a single *master* and multiple *chunkservers* and is a
 Files are divided to fixed-size *chunks*. Each chunk is identified by an immutable, globaly unique 64bit *chunk handle* assigned by *master* at the creation.
 
 The master maintains all file system metadata. The master periodically communicates with each chunkserver in *HeartBeat* messages.
+
+A GFS cluster consists of a single `master` and multiple `chunkserver` and is accessed by multiple `clients`.
 
 #### Single Master
 
@@ -78,6 +94,38 @@ OSDI 2012。
 ## [PolarFS: An Ultra-low Latency and Failure Resilient Distributed File System for Shared Storage Cloud Database](http://www.vldb.org/pvldb/vol11/p1849-cao.pdf)
 
 VLDB 2018。
+
+Recently, decoupling storage from compute has become a trend for cloud computing industry.
+
+1. Hardware of compute / storage nodes can be different.
+2. Disks on different storage nodes can form one pool form fragmentation and storage usage concerns.
+3. There is no local persistent state on compute nodes(?), which makes it easier and faster for database migration.
+
+*PolarFS* is designed and implemented to prove a better filesystem comparing to the other common products as there does exist trade-off between consistent and performance.
+
+- Distributed filesystems like HDFS and Ceph are found with much higher latency, and have no use of new hardwares such as RMDA or NVMe.
+- General-purpose filesystems like ext4 running on bare metal hardwares are lack of scalability, fault tolerence and usage effciency.
+
+*PolarFS* do use the user space network stack and IO stack.
+*PolarFS* proposes *ParallelRaft* as Raft seriously impedes the I/O scalability when using extra low latency hardware.
+
+For NVMe and RDMA, traditional techniques such as kernel space disk drivers or kernel space TCP/IP stack become the bottleneck.
+
+PolarFS has 2 layers:
+
+- Layer 1 is storage layer, which manages all the disk resoures and provides a database volume for every database instance.(Q)
+- Layer 2 is filesystem layer, which supports file management and is responsible for mutual exclusion and synchronization of concurrent accesses to file system metadata.
+
+For storage layer:
+
+1. A volumn is allocated for each database instance and is composed of chunks. The capacity of volumns ranges from 10GB to 100TB.
+1. Chunks are distributed among ChunkServers, whose relica are placed to three distinct ChunkServers.
+1. Size of chunks are 10GB
+
+Q:
+
+- `recv()`
+- Layer 1
 
 # 分布式锁
 
