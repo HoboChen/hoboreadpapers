@@ -46,40 +46,29 @@ Traditional choices are reexamined and different points of design space are expl
 GFS provides a familiar file system interface but it does not implement fully a standard API.
 GFS support the usual operations like `create`, `delete`, `open`, `close`, `read` and `write`. Moreover, GFS has `snapshot` and `record append` operations.
 
-Q:
-
-- `record append`?
-
-
-
-### Introduction
-
-Key observations of our application workloads and technological environment:
-
-- Component failures are the norm rather than the exception.
-- Files are huge.
-- Most files are mutated by appending rather than overwriting.
-
-### Design Review
-
-#### Architecture
-
 A GFS cluster consists of a single *master* and multiple *chunkservers* and is accessed by multiple *clients*.
 
 Files are divided to fixed-size *chunks*. Each chunk is identified by an immutable, globaly unique 64bit *chunk handle* assigned by *master* at the creation.
+For reliability, each chunk is replicated on multiple chunkservers. By default, three replicas are stored.
 
-The master maintains all file system metadata. The master periodically communicates with each chunkserver in *HeartBeat* messages.
+The master maintains all file system metadata.
 
-A GFS cluster consists of a single `master` and multiple `chunkserver` and is accessed by multiple `clients`.
+Size of chunk is 64MB, and each chunk replica is stored as plain Linux file on a chunkserver.
 
-#### Single Master
+The master stores three major types of metadata:
 
-#### Consistency Model
+1. file and chunk namespaces
+1. mapping from files to chunks
+1. locations of each chunk's location
 
-Guarantees:
+<!-- Guarantees: -->
 
-- File namespace mutations (e.g., file creation) are atomic.
-- The state of a file region after a data mutation depends on the type of mutation, whether it succeeds or fails, and whether there are concurrent mutations.
+<!-- - File namespace mutations (e.g., file creation) are atomic. -->
+<!-- - The state of a file region after a data mutation depends on the type of mutation, whether it succeeds or fails, and whether there are concurrent mutations. -->
+
+Q:
+
+- `record append`?
 
 # 分布式存储
 
@@ -120,7 +109,8 @@ For storage layer:
 
 1. A volumn is allocated for each database instance and is composed of chunks. The capacity of volumns ranges from 10GB to 100TB.
 1. Chunks are distributed among ChunkServers, whose relica are placed to three distinct ChunkServers.
-1. Size of chunks are 10GB
+1. Size of chunks are 10GB, makes PolarSwitch to store all the metadata in memory possible.
+1. A chunk is devided into blocks inside the ChunkServer, and each block is set to 64KB.
 
 Q:
 
