@@ -87,7 +87,7 @@ VLDB 2018。
 Recently, decoupling storage from compute has become a trend for cloud computing industry.
 
 1. Hardware of compute / storage nodes can be different.
-2. Disks on different storage nodes can form one pool form fragmentation and storage usage concerns.
+2. Disks on different storage nodes can form one pool for fragmentation and storage usage concerns.
 3. There is no local persistent state on compute nodes(?), which makes it easier and faster for database migration.
 
 *PolarFS* is designed and implemented to prove a better filesystem comparing to the other common products as there does exist trade-off between consistent and performance.
@@ -111,11 +111,18 @@ For storage layer:
 1. Chunks are distributed among ChunkServers, whose relica are placed to three distinct ChunkServers.
 1. Size of chunks are 10GB, makes PolarSwitch to store all the metadata in memory possible.
 1. A chunk is devided into blocks inside the ChunkServer, and each block is set to 64KB.
+1. Large chunk makes seprating hot spot chunk impossible, which means aggregate performance of instances of databases is preferrable to max performance of one instance.
+
+1. PolarSwitch is daemon process running in the database server machines (compute nodes) which forwards IO requests to machine where the leader chunk locates according to local cache synchronized with PolarCtrl.
+1. Each chunkserver process is bound to a dedicated CPU core and a NVMe SSD. WAL will be first written to a 3D-XPoint SSD buffer.
+1. Chunkserver replicates the IO requests and form a consensus group.
+1. PolarCtrl is the control plane of a PolarFS cluster, and it is depolyed on at lease 3 dedicated machines.
 
 Q:
 
 - `recv()`
 - Layer 1
+- WAL
 
 # 分布式锁
 
