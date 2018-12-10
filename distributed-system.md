@@ -113,6 +113,8 @@ For storage layer:
 1. A chunk is devided into blocks inside the ChunkServer, and each block is set to 64KB.
 1. Large chunk makes seprating hot spot chunk impossible, which means aggregate performance of instances of databases is preferrable to max performance of one instance.
 
+Other components:
+
 1. PolarSwitch is daemon process running in the database server machines (compute nodes) which forwards IO requests to machine where the leader chunk locates according to local cache synchronized with PolarCtrl.
 1. Each chunkserver process is bound to a dedicated CPU core and a NVMe SSD. WAL will be first written to a 3D-XPoint SSD buffer.
 1. Chunkserver replicates the IO requests and form a consensus group.
