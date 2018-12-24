@@ -13,7 +13,7 @@ Google’s architecture features clusters of more than 15,000 **commodity** clas
 **Energy efficiency and price-performance** ratio are the most important factors which influence the design.
 For energy efficiency, power consumption and cooling issues are taxing the limits of available data center power densities. Google is an example of a **throughput-oriented, parallel friendly** workload.
 
-Reliability is provided in software rather than in server-class hardware, and aggregate request throughput rather than peak server response time are tailored for design.
+Reliability is provided in **software** rather than in server-class hardware, and **aggregate request throughput** rather than peak server response time are tailored for design.
 
 To provide sufficient capacity to handle query traffic, google service consists of multiple clusters distributed worldwide.
 Each cluster has around a few thousand machines, and the geographically distributed setup protects us against catastrophic data center failures.
@@ -28,7 +28,7 @@ Most access to the inex and other data structures involved in answering a query 
 
 Machines older than three years are so much slower than current-generation machines that it is difficult to achieve proper load distribution and configuration in clusters containing both types.
 
-There isn’t that much exploitable instruction-level parallelism (ILP) in the workload.
+There is **not** that much exploitable instruction-level parallelism in the workload.
 Measurements suggest that the level of aggressive out-of-order, speculative execution present in modern processors is already beyond the point of diminishing performance returns for such programs.
 
 - Google使用很多廉价服务器组成集群来提供服务
@@ -88,6 +88,8 @@ func Reduce(key string, values []string) {
 
 ### Implementation
 
+![MapReduce-Fig](resource/mapreduce-fig.svg)
+
 The right choice of MapReduce implementation depends on the environment.
 
 1. Split the input files into M pieces of typically 16-64 megabytes. And then drop them to GFS.
@@ -97,6 +99,30 @@ The right choice of MapReduce implementation depends on the environment.
 1. Reduce worker reads the intermediate data, and it sorts it by the intermediate keys.
 1. For each unique key encountered, it passes the key and the corresponding set of intermediate values to the user's Reduce function. The output is to append to the final output file for this reduce partition.
 1. When all map tasks and reduce tasks have been completed, the MapReduce job finished.
+
+#### Fault Tolerance
+
+worker:
+
+1. heart beat to check whether worker lives
+1. reduce worker renames its temporary output file to final output file **atomically**
+1. re-excuted produces the same output; map tasks are re-executed, but reduce tasks not
+1. after re-executing one map task, all the reduce workers would be notified
+
+master:
+
+1. simply assume that master will not fail, but write checkpoints periodically
+
+#### Backup Tasks
+
+When a MapReduce opeartion is close to completion, the master schedules backup executions of the remaining *in-progress* tasks.
+
+### Refinements
+
+TODO
+
+- MapReduce要求map, reduce均无后效性
+- 无后效性的函数只需重复执行即可，错误处理变得异常简单
 
 ## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
 
