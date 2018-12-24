@@ -50,11 +50,54 @@ Measurements suggest that the level of aggressive out-of-order, speculative exec
 
 ## [MapReduce: Simplified Data Processing on Large Clusters](https://www.usenix.org/legacy/events/osdi04/tech/full_papers/dean/dean.pdf)
 
-OSDI 2004。
+OSDI 2004.
+
+MapReduce is a programming model and an associated implementation for processing and generating large dataset.
+Many real world tasks are expressible in this model.
+
+- *map* function is to process a key/value pair to generate a set of intermediate key/value pairs.
+- *reduce* merges all intermediate values associated with the same intermediate key.
+
+The run-time system takes care of the details of partitioning the input data, scheduling the program's execution across a set of machines, handling machine failures and managing the required inter-machine communication.
+
+The abstraction is inspired by the *map* and *reduce* primitives present in Lisp and many other functioinal languages.
+
+### Programming Model
+
+```go
+// pseudo-code of counting the number of occurrences of each word in a large collection of document
+
+func Map(key string, value string) {
+    // key: document name
+    // value: document
+    for _, word := range(strings.Split(value, " ")) {
+        EmitIntermediate(word, "1");
+    }
+}
+
+func Reduce(key string, values []string) {
+    // key: a word
+    // values: a slice of counts
+    result := 0
+    for _, cnt := values {
+        result += ParseInt(cnt)
+    }
+    Emit(AsString(result))
+}
+```
+
+### Implementation
+
+The right choice of MapReduce implementation depends on the environment.
+
+1. Split the input files into M pieces of typically 16-64 megabytes. And then drop them to GFS.
+1. There are M map tasks and R reduce tasks.
+1. A worker who is assigned a map task reads the contents, and it parses and passes each pair to Map function. The intermediate key/value pairs are buffered in memory.
+1. Periodically, buffered pairs are written to 
 
 ## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
 
-OSDI 2006。
+OSDI 2006.
 
 ## [The Google file system](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf)
 
