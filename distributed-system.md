@@ -93,7 +93,10 @@ The right choice of MapReduce implementation depends on the environment.
 1. Split the input files into M pieces of typically 16-64 megabytes. And then drop them to GFS.
 1. There are M map tasks and R reduce tasks.
 1. A worker who is assigned a map task reads the contents, and it parses and passes each pair to Map function. The intermediate key/value pairs are buffered in memory.
-1. Periodically, buffered pairs are written to 
+1. Periodically, buffered pairs are written to local disk, which partitioned into R regions by the partitioning function.
+1. Reduce worker reads the intermediate data, and it sorts it by the intermediate keys.
+1. For each unique key encountered, it passes the key and the corresponding set of intermediate values to the user's Reduce function. The output is to append to the final output file for this reduce partition.
+1. When all map tasks and reduce tasks have been completed, the MapReduce job finished.
 
 ## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
 
