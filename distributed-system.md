@@ -170,15 +170,15 @@ Q:
 
 ## [Ceph: A Scalable, High-Performance Distributed File System](https://www.usenix.org/legacy/event/osdi06/tech/full_papers/weil/weil.pdf)
 
-CEPH, 2006年OSDI。
+2006 OSDI.
 
 ## [Spanner: Google’s globally distributed database](https://dl.acm.org/ft_gateway.cfm?id=2491245&type=pdf)
 
-OSDI 2012。
+OSDI 2012.
 
 ## [PolarFS: An Ultra-low Latency and Failure Resilient Distributed File System for Shared Storage Cloud Database](http://www.vldb.org/pvldb/vol11/p1849-cao.pdf)
 
-VLDB 2018。
+VLDB 2018.
 
 Recently, decoupling storage from compute has become a trend for cloud computing industry.
 
