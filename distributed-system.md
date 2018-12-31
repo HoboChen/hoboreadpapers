@@ -117,12 +117,16 @@ master:
 
 When a MapReduce opeartion is close to completion, the master schedules backup executions of the remaining *in-progress* tasks.
 
+#### Locality
+
+Master use the info of where the GFS stores the replica to schedule tasks to reduce remote IO.
+
 ### Refinements
 
 TODO
 
 - MapReduce要求map, reduce均无后效性
-- 无后效性的函数只需重复执行即可，错误处理变得异常简单
+- 无后效性的函数只需重复执行即可，错误处理变得简单
 
 ## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
 
