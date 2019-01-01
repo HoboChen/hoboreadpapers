@@ -113,20 +113,63 @@ master:
 
 1. simply assume that master will not fail, but write checkpoints periodically
 
-#### Backup Tasks
-
-When a MapReduce opeartion is close to completion, the master schedules backup executions of the remaining *in-progress* tasks.
-
 #### Locality
 
 Master use the info of where the GFS stores the replica to schedule tasks to reduce remote IO.
 
+#### Backup Tasks
+
+When a MapReduce opeartion is close to completion, the master schedules backup executions of the remaining *in-progress* tasks.
+
 ### Refinements
 
-TODO
+- partitioning function
+- ordering guarantee
+- local execution
+    - alternative implementation which enables sequetial excution is developed
+- status information
+- counter
 
-- MapReduce要求map, reduce均无后效性
-- 无后效性的函数只需重复执行即可，错误处理变得简单
+#### Combiner Function
+
+We allow the user to specify an optional *Combiner* function that does partial merging of the data before it is sent over the network.
+
+#### Side-effects
+
+Atomic two-phase commits of multiple output files produced by a single task is not provided. Therefore, tasks that produce multiple output files with cross-file consistency requirements should be deterministic.
+
+### Performance
+
+#### Grep
+
+- $10^{10}$ 100-byte records
+- pattern is relatively rare, 92337 times occured
+- M=15000, R=1
+- 150 sec
+
+#### Sort
+
+- - $10^{10}$ 100-byte records, roughly TB-sort
+- final sorted output is written to a set of 2-way replicated GFS files
+- a pre-pass MR operation will collect a sample of the keys and use the distribution to compute the split points, which is used in Map phase
+- M=15000, R=4000
+- 891 sec
+
+### Experience
+
+- first version of MapReduce is written in Feb 2013
+- significant enhancements were make in Aug 2013
+    - locality optimization
+    - dynamic load balancing
+
+- MapReduce要求map,reduce均无后效性
+- 无后效性可以隐藏：
+    - 并行的细节
+    - 错误处理
+    - 局部性优化
+    - 负载均衡
+- 在map,reduce快要结束的时候，启动备份Task来避免长尾
+- 网络是瓶颈
 
 ## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
 
