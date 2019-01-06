@@ -4,7 +4,7 @@ urlcolor: purple
 citecolor: blue
 ...
 
-# G-3
+# G-5
 
 ## [Websearch for a Planet: The Google Cluster Architecture](http://www.eecs.harvard.edu/~dbrooks/cs246-fall2004/google.pdf)
 
@@ -175,10 +175,6 @@ Atomic two-phase commits of multiple output files produced by a single task is n
 - 在map,reduce快要结束的时候，启动备份Task来避免长尾
 - 网络是瓶颈
 
-## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
-
-OSDI 2006.
-
 ## [The Google file system](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf)
 
 SOSP 2003.
@@ -313,9 +309,96 @@ TODO
 <!-- - File namespace mutations (e.g., file creation) are atomic. -->
 <!-- - The state of a file region after a data mutation depends on the type of mutation, whether it succeeds or fails, and whether there are concurrent mutations. -->
 
-Q:
+## [The Chubby lock service for loosely-coupled distributed systems](http://static.usenix.org/legacy/events/osdi06/tech/full_papers/burrows/burrows.pdf)
 
-- `record append`?
+## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
+
+OSDI 2006.
+
+# 分布式一致性协议
+
+## [In Search of an Understandable Consensus Algorithm](https://www.usenix.org/system/files/conference/atc14/atc14-paper-ongaro.pdf)
+
+Raft is a consensus algorithm for managing a replicated log.
+It produces a result equivalent to multi-Paxos.
+
+Raft separates the key elements of consensus, such as leader election, log replication and safty.
+It enforces a stronger degree of conherency to reduce the number of states.
+
+### Replcated State Machines
+
+Consensus algorithms typically arise in the context of *replicated state machines*.
+
+Replicated state machines are used to solve a varity of fault tolerance problems in distributed systems, e.g. GFS, HDFS and RAMCloud.
+Examples of replcated state machines include Chubby and ZooKeeper.
+
+Replicated state machines are typically implemented using a replicated log. Keeping the replcated log consistent is the job of the consensus algorithm, which is to:
+
+- ensure *safety* under all non-Byzantine conditions
+- *available* as long as any majority of the servers opeartional
+- do not depend on timing techniques
+
+### Paxos
+
+Paxos first defines a protocol capable of reaching agreement on a single decision, e.g. a single replicated log entry.
+Paxos then combines multiple instances of this protocol to facilitate a series of decisions such as a log(Multi-Paxos).
+
+### Design
+
+Most important goal is *understandablity*.
+
+### Raft
+
+Raft implements consensus by first electing a distinguished *leader*.
+The leader accepts log entries from clients, replicates them on other servers, and tells servers then it is safe to apply log entries to their state machines.
+
+Raft includes:
+
+1. leader election
+1. log replication
+1. safety
+
+#### Raft Basics
+
+A raft cluster contains several servers; five is a typical number, which allows the system to tolerate two failures.
+At any time, each server is in one of the states:
+
+1. leader
+1. follower
+1. candidate
+
+Raft divides time into *terms* of arbitrary length.
+Terms are numbered with consecutive integers.
+Each term begins with an election.
+
+Raft ensures that is at most one leader in a given term.
+
+Terms act as a logical lock in Raft, which allow servers to detect obsolete information such as stale leaders.
+Each server stores a *current terms* number, which increases monotonically over time.
+
+Current terms are exchanged whenever servers communicate. If a candidate or leader discovers that its term is out of date, it immediately reverts to follower state.
+
+Raft servers communicate using RPCs, and the basic consensus algorithm requires:
+
+1. RequestVote RPC, sent by candidates during elections
+1. AppendEntries RPC, sent by leader to replicate log entry and to provide a form of heart beat
+
+#### Leader Election
+
+When servers start up, they begin as followers.
+A server remains in follower state as long as it receives valid RPCs from a leader or candidate.
+Leaders send periodic heartbeats to all followers in order to maintain their authority.
+
+If a follower receives no communication over a period of time called the *election timeout*, then it assumes there is no viable leader and begins an election to choose a new leader.
+
+Raft uses randomized election timeouts to ensure that split votes are rate and that they are resolved quickly.
+
+TODO
+
+#### Log Replication
+
+Each client request contains a command to be executed by the replicated state machines.
+The leader appends the command to its log as a new entry, 
 
 # 分布式存储
 
@@ -374,8 +457,6 @@ Q:
 - WAL
 
 # 分布式锁
-
-## [The Chubby lock service for loosely-coupled distributed systems](http://static.usenix.org/legacy/events/osdi06/tech/full_papers/burrows/burrows.pdf)
 
 # 分布式调度
 
