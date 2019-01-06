@@ -186,8 +186,21 @@ Traditional choices are reexamined and different points of design space are expl
 1. Most files are mutated by appending new data rather than overwriting existing data.
 1. Co-designing the applications and the file system API benefits the overall system.
 
-GFS provides a familiar file system interface but it does not implement fully a standard API.
+### Design Overview
+
+Assume:
+
+1. The system is built from many inexpensive commodity components.
+1. The system stores a modest number of large files.
+1. The workloads primarily consist of 2 kinds of read: large streaming reads and small random reads.
+1. The workloads have many large sequential writes. And once written, files are seldom modified again.
+1. The system must be efficient when appending concurrently with multiple clients.
+1. High sustained bandwidth is more important than low lantency.
+
+GFS provides a familiar file system interface but it does not implement fully a POSIX API.
 GFS support the usual operations like `create`, `delete`, `open`, `close`, `read` and `write`. Moreover, GFS has `snapshot` and `record append` operations.
+
+#### Architecture
 
 A GFS cluster consists of a single *master* and multiple *chunkservers* and is accessed by multiple *clients*.
 
