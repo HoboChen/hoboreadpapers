@@ -67,6 +67,7 @@ The abstraction is inspired by the *map* and *reduce* primitives present in Lisp
 ### Programming Model
 
 ```go
+TODO
 // pseudo-code of counting the number of occurrences of each word in a large collection of document
 
 func Map(key string, value string) {
