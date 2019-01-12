@@ -67,25 +67,84 @@ The abstraction is inspired by the *map* and *reduce* primitives present in Lisp
 ### Programming Model
 
 ```go
-TODO
-// pseudo-code of counting the number of occurrences of each word in a large collection of document
+// i simply copy my code of mit 6.824 lab 1 here
+// i do recommend the course
 
-func Map(key string, value string) {
-    // key: document name
-    // value: document
-    for _, word := range(strings.Split(value, " ")) {
-        EmitIntermediate(word, "1");
-    }
+func doMap(
+	jobName string, // the name of the MapReduce job
+	mapTask int, // which map task this is
+	inFile string,
+	nReduce int, // the number of reduce task that will be run ("R" in the paper)
+	mapF func(filename string, contents string) []KeyValue,
+) {
+	reduceFiles := make(map[string]map[string][]string) // maps reduceFileName -> reduceFileContent
+
+	b, err := ioutil.ReadFile(inFile)
+	if err != nil {
+		panic(err)
+	}
+	for _, val := range mapF(inFile, string(b)) {
+		r := ihash(val.Key)
+		reduceFileName := reduceName(jobName, mapTask, r%nReduce)
+		if reduceFiles[reduceFileName] == nil {
+			reduceFiles[reduceFileName] = make(map[string][]string)
+		}
+		reduceFiles[reduceFileName][val.Key] = append(reduceFiles[reduceFileName][val.Key], val.Value)
+	}
+	for reduceFileName, reduceFileContent := range reduceFiles {
+		b, err := json.Marshal(reduceFileContent)
+		if err != nil {
+			panic(err)
+		}
+		reduceFile, err := os.Create(reduceFileName)
+		if err != nil {
+			panic(err)
+		}
+		reduceFile.Write(b)
+		reduceFile.Close()
+	}
 }
 
-func Reduce(key string, values []string) {
-    // key: a word
-    // values: a slice of counts
-    result := 0
-    for _, cnt := values {
-        result += ParseInt(cnt)
-    }
-    Emit(AsString(result))
+func ihash(s string) int {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return int(h.Sum32() & 0x7fffffff)
+}
+func doReduce(
+	jobName string, // the name of the whole MapReduce job
+	reduceTask int, // which reduce task this is
+	outFile string, // write the output here
+	nMap int, // the number of map tasks that were run ("M" in the paper)
+	reduceF func(key string, values []string) string,
+) {
+	reduceContent := make(map[string][]string)
+
+	for mapTaskIdx := 0; mapTaskIdx < nMap; mapTaskIdx++ {
+		reduceFileName := reduceName(jobName, mapTaskIdx, reduceTask)
+		b, err := ioutil.ReadFile(reduceFileName)
+		if err != nil {
+			panic(err)
+		}
+		mapContent := make(map[string][]string)
+		err = json.Unmarshal(b, &mapContent)
+		if err != nil {
+			panic(err)
+		}
+		for key, val := range mapContent {
+			for _, v := range val {
+				reduceContent[key] = append(reduceContent[key], v)
+			}
+		}
+	}
+	reduceFile, err := os.Create(outFile)
+	if err != nil {
+		panic(err)
+	}
+	enc := json.NewEncoder(reduceFile)
+	for key, values := range reduceContent {
+		enc.Encode(KeyValue{key, reduceF(key, values)})
+	}
+	reduceFile.Close()
 }
 ```
 
@@ -394,7 +453,7 @@ If a follower receives no communication over a period of time called the *electi
 
 Raft uses randomized election timeouts to ensure that split votes are rare and that they are resolved quickly.
 
-TODO to add figure 4 here
+![Raft-ServerState]()
 
 #### Log Replication
 
