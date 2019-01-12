@@ -471,7 +471,7 @@ Each log stores:
 
 If an entry is replicated on majority of machines, it is called *saftly replicated* or *committed*.
 This also commits all proceding entries in the leader's log, including entries created by previous leaders.
-TODO see chap 5.4
+Next subsection will discusses more about why it is safe.
 
 The leader keeps track of the highest index it knows to be commited, which is also included in the AppendEntires RPCs.
 Once a follower learns an entry is commited, it applies the entry in its local machine.
@@ -487,17 +487,39 @@ By:
 1. When sending an AppendEntries RPC, the leader includes the index and term of the entry in its log immediately precedes the new entry.
 
 Leader crashes can leave the logs inconsistent.
-In Raft, the leader will force the follower's log to duplicate its own. TODO see 5.4
+In Raft, the leader will force the follower's log to duplicate its own.
+Next subsection will show why it is safe when coupled with one more restriction.
 
-To bring TODO
+To bring a follower's log into consistency with its own, the leader must find the lastest log entry where the two logs agree, delete any entries in the follower's log after that and send all the leader's entries after that.
 
 #### Safety
 
 This section completes the Raft algorithm by adding a restriction on which servers may be elected leader.
 
-A candidate must contact a majority of the cluster
-in order to be elected, which means that every committed
-entrymust bepresentinat least oneofthoseservers.
+##### Election restriction
+
+Raft uses the voting process to prevent a candidate from winning an election unless its log contains all committed entries.
+A candidate must contact a majority of the cluster in order to be elected, which means that every committed entry must be present in at least  one of those servers.
+
+##### Committing entries from previous terms
+
+If a leader crashes before committing an entry, future leaders will attempt to finish replicating the entry.
+However, a leader cannot immediately conclude that an entry from a previous term is commited once it is stored on majority of servers. 
+
+Raft never commits log entries from previous terms by counting replicas.
+Only log entries from the leader's current term are commited by counting replicas.
+
+Raft incurs this extra complexity in the commitment rules as log entries retain their original term numbers when a leader replicates entries from previous terms.
+
+##### Safety argument
+
+TODO
+
+#### Timing and availability
+
+$$
+broadcastTime << electionTimeout << MTBF
+$$
 
 # 分布式存储
 
