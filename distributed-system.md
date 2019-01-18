@@ -211,7 +211,7 @@ Atomic two-phase commits of multiple output files produced by a single task is n
 
 #### Sort
 
-- - $10^{10}$ 100-byte records, roughly TB-sort
+- $10^{10}$ 100-byte records, roughly TB-sort
 - final sorted output is written to a set of 2-way replicated GFS files
 - a pre-pass MR operation will collect a sample of the keys and use the distribution to compute the split points, which is used in Map phase
 - M=15000, R=4000
