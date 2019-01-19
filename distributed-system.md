@@ -447,16 +447,26 @@ Raft servers communicate using RPCs, and the basic consensus algorithm requires:
 
 #### Leader Election
 
+![Raft-ServerState](resource/raft-serverstate.png)
+
 When servers start up, they begin as followers.
 A server remains in follower state as long as it receives valid RPCs from a leader or candidate.
 Leaders send periodic heartbeats to all followers in order to maintain their authority.
 
 If a follower receives no communication over a period of time called the *election timeout*, then it assumes there is no viable leader and begins an election to choose a new leader.
 
-Raft uses randomized election timeouts to ensure that split votes are rare and that they are resolved quickly.
+To begin a election, a follower increments its current term and transitions to cnadidate state.
+It then votes for itself and issues RequestVote RPCs in parallel to other servers.
+A candidate continues in this state until:
 
-TODO
-![Raft-ServerState]()
+1. wins the election
+1. another server establishes itself as a leader
+1. a period of time goes by but no winner
+
+While waiting for votes, a candidate may receive an AppendEntires RPC from another server claiming to be leader.
+If the leader's term is at least as large as the candidate's current term, then the candidate recognizes the leader as legitimate and returns to follower state.
+
+Raft uses randomized election timeouts to ensure that split votes are rare and that they are resolved quickly.
 
 #### Log Replication
 
@@ -490,19 +500,29 @@ By:
 1. When sending an AppendEntries RPC, the leader includes the index and term of the entry in its log immediately precedes the new entry.
 
 Leader crashes can leave the logs inconsistent.
+These inconsistencies can compound over a series of leader and follower crashes.
+
 In Raft, the leader will force the follower's log to duplicate its own.
 Next subsection will show why it is safe when coupled with one more restriction.
 
 To bring a follower's log into consistency with its own, the leader must find the lastest log entry where the two logs agree, delete any entries in the follower's log after that and send all the leader's entries after that.
 
+The leader maintains a *nextIndex* for each follower, which is the index of the next log entry the leader will send to that follower.
+When a leader first comes to power, it initializes all nextIndex values to index just after the last one in log.
+If a follower's log is inconsistent with the leader's, the AppendEntries RPC will fail and then the leader decrements nextIndex and retries the AppendEntries RPC.
+
 #### Safety
 
 This section completes the Raft algorithm by adding a restriction on which servers may be elected leader.
+The restriction ensures that leader for any given term contains all of the entries commited in previous terms.
 
 ##### Election restriction
 
 Raft uses the voting process to prevent a candidate from winning an election unless its log contains all committed entries.
-A candidate must contact a majority of the cluster in order to be elected, which means that every committed entry must be present in at least  one of those servers.
+
+A candidate must contact a majority of the cluster in order to be elected, which means that every committed entry must be present in at least one of those servers.
+
+Raft determines which of two logs is more up-to-date by comparing the index and term of the last entries in the logs.
 
 ##### Committing entries from previous terms
 
@@ -514,15 +534,15 @@ Only log entries from the leader's current term are commited by counting replica
 
 Raft incurs this extra complexity in the commitment rules as log entries retain their original term numbers when a leader replicates entries from previous terms.
 
-##### Safety argument
-
-TODO
-
 #### Timing and availability
 
 $$
 broadcastTime << electionTimeout << MTBF
 $$
+
+## Cluster Membership Changes
+
+Switching directly from one configuration to another is unsafe because different servers will switch at different times.
 
 简单总结：
 
