@@ -436,7 +436,9 @@ Raft ensures that is at most one leader in a given term.
 Terms act as a logical lock in Raft, which allow servers to detect obsolete information such as stale leaders.
 Each server stores a *current terms* number, which increases monotonically over time.
 
-Current terms are exchanged whenever servers communicate. If a candidate or leader discovers that its term is out of date, it immediately reverts to follower state.
+Current terms are exchanged whenever servers communicate.
+If a candidate or leader discovers that its term is out of date, it immediately reverts to follower state.
+If a server receives a request with a stale term number, it rejects the request.
 
 Raft servers communicate using RPCs, and the basic consensus algorithm requires:
 
@@ -453,6 +455,7 @@ If a follower receives no communication over a period of time called the *electi
 
 Raft uses randomized election timeouts to ensure that split votes are rare and that they are resolved quickly.
 
+TODO
 ![Raft-ServerState]()
 
 #### Log Replication
@@ -520,6 +523,18 @@ TODO
 $$
 broadcastTime << electionTimeout << MTBF
 $$
+
+简单总结：
+
+1. 分布式一致性协议是用来保持分布式日志的一致性的；日志中的记录是状态机的命令，如果分布式日志是一致的，那么按照日志运行的状态机必定一致。
+1. Raft是一种分布式一致性协议，相比于Paxos更易于理解。
+1. Raft中定义机器可能在三种状态中的一种：Leader, Candidate, Follower。
+1. Raft中的Term是时间度量的单位，从0开始，单调递增；每个Term最多有一个Leader。
+1. 每次Election都会产生一个新的Term。
+1. Raft只有以下RPC:
+	a. RequestVote
+	b. AppendEntries
+1. 
 
 # 分布式存储
 
