@@ -150,7 +150,7 @@ func doReduce(
 
 ### Implementation
 
-![MapReduce-Fig](resource/mapreduce-fig.svg)
+![MapReduce-Fig](resource/mapreduce-fig.png)
 
 The right choice of MapReduce implementation depends on the environment.
 
@@ -262,7 +262,7 @@ GFS support the usual operations like `create`, `delete`, `open`, `close`, `read
 
 #### Architecture
 
-![GFS-Architecture](./resource/gfs-fig-0.svg)
+![GFS-Architecture](./resource/gfs-fig-0.png)
 
 A GFS cluster consists of a single *master* and multiple *chunkservers* and is accessed by multiple *clients*.
 
@@ -312,15 +312,22 @@ The checkpoint is in a compact B-tree like from.
 ##### Guarantees by GFS
 
 File namespace mutations are atomic, they are handled exclusively by the master.
+The master's log defines a global total order of these operations.
 
-The state of a file region after a data mutation depends on the type of mutation, whether it succeeds or fails, and whether there are concurrent mutations.
+The state of a file region after a data mutation depends on:
+
+1. type of mutation
+2. succeeds or fails
+3. whether there are concurrent mutations
+
+States are:
 
 1. A file region is *consistent* is all clients will always see the same data, regradless of which replicas they read from.
-1. A file region is *defined* after a file data mutation if it is consistent and clients will see what mutation writes in its entirety.
+1. A file region is *defined* after a file data mutation if it is consistent and clients will see what mutation writes in its entirety. When a mutation succeeds without interference from concurrent writers.
 1. A file region is *undefined but consistent* after concurrent successful mutations : all clients see the same data, but it may not reflect what any one mutation has written.
 1. A file region is *inconsistent* hence also *undifined* after a failed mutation.
 
-Data mutations may be *writes* or *record appends*.
+Data mutations may be *writes* or *record appends*:
 
 1. A write causes data to be written at an application-specified file offset.
 1. A record append causes data to be appended *atomically at least once*.
@@ -336,7 +343,7 @@ The master grants a chunk lease to one of the replicas, which is called *primary
 The primary picks a serial order for all mutations to the chunk, and all replicas follow this order.
 The lease machanism is designed to minimize management overhead at the master.
 
-![GFS-WriteFlow](./resource/gfs-fig-1.svg)
+![GFS-WriteFlow](./resource/gfs-fig-1.png)
 
 Writes:
 
@@ -356,18 +363,66 @@ Pipelining is helpful as dull-duplex links are used.
 
 #### Atomic Record Appends
 
-TODO
+The primary will check to see if appending the record to the current chunk would cause the chunk to the maximum size(64MB).
+If so, it pads the chunk to 64MB, and tell other replicas to do so and then replies to the client that the operation should be retried.
 
+If a record append fails at any replica, the client retires the operation.
 GFS does not guarantee that all replicas are bytewise identical.
+
+TODO
+This prop-
+erty follows readily from the simple observation that for the
+operation to report success, the data must have been written
+at the same offset on all replicas of some chunk. Further-
+more, after this, all replicas are at least as long as the end
+of record and therefore any future record will be assigned a
+higher offset or a different chunk even if a different replica
+later becomes the primary. In terms of our consistency guar-
+antees, the regions in which successful record append opera-
+tions have written their data are defined (hence consistent),
+whereas intervening regions are inconsistent (hence unde-
+fined). Our applications can deal with inconsistent regions
+as we discussed in Section 2.7.2.
 
 #### Snapshot
 
-TODO
+Standard copy-on-write techniques are used to implement snapshots.
 
-<!-- Guarantees: -->
+## Master Operation
 
-<!-- - File namespace mutations (e.g., file creation) are atomic. -->
-<!-- - The state of a file region after a data mutation depends on the type of mutation, whether it succeeds or fails, and whether there are concurrent mutations. -->
+### Namespace Management and Locking
+
+Many master operations like snapshot can take a long time, so locks over regions of the namespace are used to ensure proper serialization. 
+
+Each node in the namespace tree, either an absolute file name or an absolute directory name, has an associated read-write lock.
+Locks are acquired in a consistent order to prevent deadlock; they are first ordered by level in the namespace tree and lexicographically within the same level.
+
+### Replica Placement
+
+The chunk replica placement policy serves two purposes:
+
+1. maximize data reliability and availability
+1. maximize network bandwidth utilization
+
+### Create, Re-replication, Rebalancing
+
+### Garbage Collection
+
+### Stale Replica Detection
+
+## Fault Tolerance and Diagnosis
+
+## Measurements
+
+## Experiences
+
+## Related Work
+
+## Conclusions
+
+简单总结：
+
+
 
 ## [The Chubby lock service for loosely-coupled distributed systems](http://static.usenix.org/legacy/events/osdi06/tech/full_papers/burrows/burrows.pdf)
 
