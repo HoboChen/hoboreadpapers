@@ -1,4 +1,4 @@
-# G-5
+# Google 5
 
 ## [Websearch for a Planet: The Google Cluster Architecture](http://www.eecs.harvard.edu/~dbrooks/cs246-fall2004/google.pdf)
 
@@ -71,7 +71,8 @@ func doMap(
 	nReduce int, // the number of reduce task that will be run ("R" in the paper)
 	mapF func(filename string, contents string) []KeyValue,
 ) {
-	reduceFiles := make(map[string]map[string][]string) // maps reduceFileName -> reduceFileContent
+	// maps reduceFileName -> reduceFileContent
+	reduceFiles := make(map[string]map[string][]string) 
 
 	b, err := ioutil.ReadFile(inFile)
 	if err != nil {
@@ -83,7 +84,8 @@ func doMap(
 		if reduceFiles[reduceFileName] == nil {
 			reduceFiles[reduceFileName] = make(map[string][]string)
 		}
-		reduceFiles[reduceFileName][val.Key] = append(reduceFiles[reduceFileName][val.Key], val.Value)
+		reduceFiles[reduceFileName][val.Key]
+			= append(reduceFiles[reduceFileName][val.Key], val.Value)
 	}
 	for reduceFileName, reduceFileContent := range reduceFiles {
 		b, err := json.Marshal(reduceFileContent)
@@ -414,8 +416,6 @@ The chunk replica placement policy serves two purposes:
 ## Conclusions
 
 简单总结：
-
-
 
 ## [The Chubby lock service for loosely-coupled distributed systems](http://static.usenix.org/legacy/events/osdi06/tech/full_papers/burrows/burrows.pdf)
 

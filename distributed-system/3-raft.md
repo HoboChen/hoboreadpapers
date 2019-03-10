@@ -175,4 +175,3 @@ Switching directly from one configuration to another is unsafe because different
 1. Raft只有以下RPC:
 	a. RequestVote
 	b. AppendEntries
-1. 
