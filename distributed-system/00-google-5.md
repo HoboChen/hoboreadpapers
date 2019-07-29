@@ -37,7 +37,7 @@ Measurements suggest that the level of aggressive out-of-order, speculative exec
     - 集群内部使单个GWS负载均衡
     - 倒排索引分片，靠随机划分文档集
     - 每个分片由一个集群提供服务，同样有负载均衡分发给某台机器
-    - 靠文档ID去拿真正的文档标题等，同样划分-分片-负载均衡
+    - 靠文档ID去拿真正的文档标题等，同样分片-负载均衡
 - 多副本提高服务能力和可用性
     - 绝大多数请求链路只读
     - 灰度更新索引，不保证一致性
@@ -273,7 +273,7 @@ The master maintains all file system metadata including:
 
 Clients interact with the master for metadata operations, but all data-bearing communication goes directly to the chunkservers.
 
-Neither the client nor the chunkserver caches file data, but clients do cache metadata.
+Neither the client nor the chunkserver caches file data(not intended to, but may be cached by filesystem), but clients do cache metadata.
 
 #### Chunk Size
 
@@ -292,10 +292,9 @@ Cons:
 #### Metadata
 
 The master does not keep a persistent record of which chunkservers have a replica of a given chunk.
-It simply pools chunkservers for that information at startup.
+It simply pools chunkservers for that information at startup, which eliminated the problem of keeping the master and chunkservers in sync as chunkservers joins, leaves, fail, restart, etc.
 
 The operation log contains a historical record of critical metadata changes.
-
 Operation log is critical, so it is stored reliably and changes is not visible to clients until metadata changes are made persistent.
 It does not respond to a client operation until flushing to both local and remote disk completed.
 
@@ -318,15 +317,15 @@ The state of a file region after a data mutation depends on:
 
 States are:
 
-1. A file region is *consistent* is all clients will always see the same data, regradless of which replicas they read from.
-1. A file region is *defined* after a file data mutation if it is consistent and clients will see what mutation writes in its entirety. When a mutation succeeds without interference from concurrent writers.
-1. A file region is *undefined but consistent* after concurrent successful mutations : all clients see the same data, but it may not reflect what any one mutation has written.
-1. A file region is *inconsistent* hence also *undifined* after a failed mutation.
+1. A file region is **consistent** is all clients will always see the same data, regradless of which replicas they read from.
+1. A file region is **defined** after a file data mutation if it is consistent and clients will see what mutation writes in its entirety. When a mutation succeeds without interference from concurrent writers.
+1. A file region is **undefined but consistent** after concurrent successful mutations : all clients see the same data, but it may not reflect what any one mutation has written.
+1. A file region is **inconsistent** hence also **undifined** after a failed mutation.
 
 Data mutations may be *writes* or *record appends*:
 
 1. A write causes data to be written at an application-specified file offset.
-1. A record append causes data to be appended *atomically at least once*.
+1. A record append causes data to be appended **atomically at least once**.
 
 After a sequence of successful mutations, the mutated file region is guaranteed to be defined and contain the data written by the last mutation. GFS achieves this by:
 
@@ -345,7 +344,7 @@ Writes:
 
 1. Client asks the master which chunkserver holds the current lease and the location of other replicas.
 1. Master replies.
-1. Client pushes the data to all the replicas.
+1. Client pushes the data to all the replicas; in any order.
 1. All replicas acknowledged, then the client sends a write request to primary, which idetifies the data pushed earlier to all of the replicas. The priamry assigns consecutive serial numbers to all the mutation it receives.
 1. The primary forwards the write request to all other replicas.
 1. Other replicas say completion.
@@ -359,25 +358,13 @@ Pipelining is helpful as dull-duplex links are used.
 
 #### Atomic Record Appends
 
-The primary will check to see if appending the record to the current chunk would cause the chunk to the maximum size(64MB).
-If so, it pads the chunk to 64MB, and tell other replicas to do so and then replies to the client that the operation should be retried.
+GFS provides an atomic append operation called *record append*, which the client only provides data and GFS decides the offset. Record append is heavily used.
+
+Like the write flow, but there is extra logic. After the client pushing data to all replicas, it will send requests to the primary. The primary will check to see if appending the record to the current chunk would cause the chunk to the maximum size(64MB).
+If so, it pads the chunk to 64MB, and tell other replicas to do so and then replies to the client that the operation should be retried. Record append is restricted to be at most 1/4 of 64MB to deal with fragmentation.
 
 If a record append fails at any replica, the client retires the operation.
-GFS does not guarantee that all replicas are bytewise identical.
-
-TODO
-This property follows readily from the simple observation that for the
-operation to report success, the data must have been written
-at the same offset on all replicas of some chunk. Further-
-more, after this, all replicas are at least as long as the end
-of record and therefore any future record will be assigned a
-higher offset or a different chunk even if a different replica
-later becomes the primary. In terms of our consistency guar-
-antees, the regions in which successful record append opera-
-tions have written their data are defined (hence consistent),
-whereas intervening regions are inconsistent (hence unde-
-fined). Our applications can deal with inconsistent regions
-as we discussed in Section 2.7.2.
+GFS does not guarantee that all replicas are bytewise identical. And with padding, if the atomic append operation is success, the data must have been written at the same offset of all chunks.
 
 #### Snapshot
 
@@ -389,6 +376,8 @@ Standard copy-on-write techniques are used to implement snapshots.
 
 Many master operations like snapshot can take a long time, so locks over regions of the namespace are used to ensure proper serialization. 
 
+GFS does not have a per-directory data structure that lists all files in that directory. Nor does it support aliases for the same file or directory. GFS logically reproesents its namespace as a lookup table mapping full pathnames to metadata.
+
 Each node in the namespace tree, either an absolute file name or an absolute directory name, has an associated read-write lock.
 Locks are acquired in a consistent order to prevent deadlock; they are first ordered by level in the namespace tree and lexicographically within the same level.
 
@@ -399,11 +388,23 @@ The chunk replica placement policy serves two purposes:
 1. maximize data reliability and availability
 1. maximize network bandwidth utilization
 
+For both, it is not enough to spread replicas across machines.
+
 ### Create, Re-replication, Rebalancing
+
+Chunk replicas are created for three reasons:
+
+1. chunk creation
+1. re-replication
+1. rebalancing
 
 ### Garbage Collection
 
+After a file is deleted, GFS does not immediately reclaim the available physical storage which is more dependable and simpler.
+
 ### Stale Replica Detection
+
+The master maintains a *chunk version number* to distinguish the up-to-date and stale replicas.
 
 ## Fault Tolerance and Diagnosis
 
@@ -416,6 +417,17 @@ The chunk replica placement policy serves two purposes:
 ## Conclusions
 
 简单总结：
+
+1. 设计上为以下优化：  
+	a. 单次操作读写较多的数据(1MB)；文件也都比较大（GB）  
+	b. 一旦写入很少修改  
+	c. 并发append  
+	d. 吞吐比延迟重要；时刻有硬件故障  
+2. 设计概览：  
+	a. 有master，master存元数据；是一个CP系统  
+	b. 文件被切成chunk，每个chunk有一个全局唯一的id(64bit)；每个chunk 64MB，三副本  
+3. 支持的操作：
+
 
 ## [The Chubby lock service for loosely-coupled distributed systems](http://static.usenix.org/legacy/events/osdi06/tech/full_papers/burrows/burrows.pdf)
 
