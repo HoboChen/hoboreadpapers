@@ -10,7 +10,7 @@ It enforces a stronger degree of conherency to reduce the number of states.
 
 Consensus algorithms typically arise in the context of *replicated state machines*.
 
-Replicated state machines are used to solve a varity of fault tolerance problems in distributed systems, e.g. GFS, HDFS and RAMCloud.
+Replicated state machines are used to solve a varity of fault tolerance problems in distributed systems, e.g. GFS, HDFS and RAMCloud, mainly for managing leader election and storing configuration that must survive leader crashes.
 Examples of replcated state machines include Chubby and ZooKeeper.
 
 Replicated state machines are typically implemented using a replicated log. Keeping the replcated log consistent is the job of the consensus algorithm, which is to:
@@ -18,6 +18,7 @@ Replicated state machines are typically implemented using a replicated log. Keep
 - ensure *safety* under all non-Byzantine conditions
 - *available* as long as any majority of the servers operational
 - do not depend on timing techniques
+- *performant*, a minority of slow servers need not impact overall system performance
 
 ### Paxos
 
@@ -39,9 +40,17 @@ Raft includes:
 1. log replication
 1. safety
 
+The key safety for Raft is the State Machine Safety Property:
+
+1. Election Safety
+2. Leader Append-Only
+3. Log Matching
+4. Leader Completeness
+4. State Machine Safety
+
 #### Raft Basics
 
-A raft cluster contains several servers; five is a typical number, which allows the system to tolerate two failures.
+A raft cluster contains several servers; **5** is a typical number, which allows the system to tolerate two failures.
 At any time, each server is in one of the states:
 
 1. leader
@@ -55,7 +64,7 @@ Each term begins with an election.
 Raft ensures that is at most one leader in a given term.
 
 Terms act as a logical lock in Raft, which allow servers to detect obsolete information such as stale leaders.
-Each server stores a *current terms* number, which increases monotonically over time.
+Each server stores a *current terms* number, which increases **monotonically** over time.
 
 Current terms are exchanged whenever servers communicate.
 If a candidate or leader discovers that its term is out of date, it immediately reverts to follower state.
