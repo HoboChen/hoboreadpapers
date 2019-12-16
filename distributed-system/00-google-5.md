@@ -431,6 +431,59 @@ The master maintains a *chunk version number* to distinguish the up-to-date and 
 
 ## [The Chubby lock service for loosely-coupled distributed systems](http://static.usenix.org/legacy/events/osdi06/tech/full_papers/burrows/burrows.pdf)
 
+OSDI 2006.
+
+### Introduction
+
+Chubby is intended for use within a loosely-coupled distributed system consisting of moderately large numbers of small machines connected by a low latency network.
+The purpose of the lock service is to allow its clients to synchronize their activities and to agree on basic information about their environment.
+Chubby’s client interface is similar to that of a simple file system that performs whole-file reads and writes, augmented with advisory locks and with notification of various events such as file modification.
+
+GFS uses a Chubby lock to appoint a GFS master server, and Bigtable uses Chubby in several ways, to elect a master, to allow the master to discover the servers it controls and to permit clients to find the server.
+Before Chubby was deployed, most distributed systems at Google used ad hoc methods for primary election (when work could be duplicated without harm), or required operator intervention (when correctness was essential).
+In the former case, Chubby allowed a small saving in computing effort. In the latter case, it achieved a significant improvement in availability in systems that no longer required human intervention on failure.
+
+Building Chubby was an engineering effort required to fill the needs mentioned above; it was not research.
+We claim no new algorithms or techniques. The purpose of this paper is to describe what we did and why, rather than to advocate it.
+
+### Design
+
+One might argue that we should have built a library embodying Paxos, rather than a library that accesses a centralized lock service, even a highly reliable one.
+
+A client Paxos library would depend on no other servers (besides the name service), and would provide a standard framework for programmers, assuming their services can be implemented as state machines.
+Indeed, we provide such a client library that is independent of Chubby.
+
+A lock service has some advantages over a client library:
+
+1. Our developers sometimes do not plan for high availability in the way one would wish.
+2. Many of our services that elect a primary or that partition data between their components need a mechanism for advertising the results, which suggests that we should allow clients to store and fetch small quantities of data, that is, to read and write small files.
+3. A lock-based interface is more familiar to our programmers.
+
+And, consensus service, which is not limited to lock service, is not better in above situations.
+
+So design decisions are:
+
+1. We chose a lock service, as opposed to a library or service for consensus
+2. We chose to serve small-files to permit elected primaries to advertise themselves and their parameters, rather than build and maintain a second service.
+3. A service advertising its primary via a Chubby file may have thousands of clients. Therefore, we must allow thousands of clients to observe this file, preferably without needing many servers.
+4. Clients and replicas of a replicated service may wish to know when the service’s primary changes. This suggests that an event notification mechanism would be useful to avoid polling.
+5. Even if clients need not poll files periodically, many will; this is a consequence of supporting many developers. Thus, caching of files is desirable.
+6. Our developers are confused by non-intuitive caching semantics, so we prefer consistent caching.
+7. To avoid both financial loss and jail time, we provide security mechanisms, including access control.
+
+Chubby itself usually has five replicas in each cell, of which three must be running for the cell to be up.
+We expect the locks are coarse-grained. These two styles of use suggest different requirements from a lock server.
+
+Chubby is intended to provide only coarse-grained locking. Fortunately, it is straightforward for clients to implement their own fine-grained locks tailored to their application.
+
+The replicas use a distributed consensus protocol to elect a master; the master must obtain votes from a majority of the replicas, plus promises that those replicas will not elect a different master for an interval of a few seconds known as the master lease.
+
+简单总结：
+
+1. Chubby是一个分布式锁服务，CA。
+2. 单纯的给粗粒度锁准备；一个锁至少会持有数个小时。
+3. 有client端的保证了一致性的缓存。
+
 ## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
 
 OSDI 2006.
