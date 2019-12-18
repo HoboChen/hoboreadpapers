@@ -448,6 +448,8 @@ We claim no new algorithms or techniques. The purpose of this paper is to descri
 
 ### Design
 
+#### Ratinale
+
 One might argue that we should have built a library embodying Paxos, rather than a library that accesses a centralized lock service, even a highly reliable one.
 
 A client Paxos library would depend on no other servers (besides the name service), and would provide a standard framework for programmers, assuming their services can be implemented as state machines.
@@ -476,12 +478,37 @@ We expect the locks are coarse-grained. These two styles of use suggest differen
 
 Chubby is intended to provide only coarse-grained locking. Fortunately, it is straightforward for clients to implement their own fine-grained locks tailored to their application.
 
-The replicas use a distributed consensus protocol to elect a master; the master must obtain votes from a majority of the replicas, plus promises that those replicas will not elect a different master for an interval of a few seconds known as the master lease.
+#### System Structure
+
+TODO Figure 1
+
+The replicas use a distributed consensus protocol to elect a master; the master must obtain votes from a majority of the replicas, plus promises that those replicas will not elect a different master for an interval of a few seconds known as the *master lease*.
+
+The replicas maintain copies of a simple database, but only the master initiates reads and writes of this database.
+All other replicas simply copy updates from the master, sent using the consensus protocol.
+
+Clients find the master by sending master location requests to the replicas listed in the DNS.
+Read requests are satisfied by the master alone; this is safe provided the master lease has not expired.
+If a master fails, the other replicas run the election protocol when their master leases expire; a new master will typically be elected in a few seconds.
+
+If a replica fails and does not recover for a few hours, a simple replacement system selects a fresh machine from a free pool and starts the lock server binary on it.
+It then updates the DNS tables, replacing the IP address of the failed replica with that of the new one.
+
+#### Files, directories, and handles
+
+TODO
+
+#### Locks and sequencers
+
+Each Chubby file and directory can act as a reader-writer lock.
+
+It is costly to introduce sequence numbers into all the interactions in an existing complex system.
+Instead, Chubby provides a means by which sequence numbers can be introduced into only those interactions that make use of locks.
 
 简单总结：
 
 1. Chubby是一个分布式锁服务，CA。
-2. 单纯的给粗粒度锁准备；一个锁至少会持有数个小时。
+2. 单纯的给粗粒度锁准备；一个锁至少会持有数个小时。在Chubby之上可以构建细粒度锁服务，而且看起来没有额外的语义/性能问题。
 3. 有client端的保证了一致性的缓存。
 
 ## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
