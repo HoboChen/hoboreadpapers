@@ -31,7 +31,7 @@ Measurements suggest that the level of aggressive out-of-order, speculative exec
     - 架构设计的考量中最重要的是**能效、性价比**
     - Google搜索是一种典型的**吞吐敏感、易于并行**的服务
     - 不使用更贵的企业级硬件，可靠性由软件层保证
-    - 不极致优化单个请求延迟，优化目标是总吞吐量
+    - 不**极致**优化单个请求延迟，优化目标是总吞吐量
 - 一个搜索请求
     - 多个集群遍布全球，根据DNS给某个集群
     - 集群内部使单个GWS负载均衡
@@ -40,7 +40,7 @@ Measurements suggest that the level of aggressive out-of-order, speculative exec
     - 靠文档ID去拿真正的文档标题等，同样分片-负载均衡
 - 多副本提高服务能力和可用性
     - 绝大多数请求链路只读
-    - 灰度更新索引，不保证一致性
+    - 灰度更新索引，不保证一致性（两次同关键词搜索可能不一致）
 - 线上机器通常不会超过3年
 - 指令级并行对提升性能没太大帮助
 
@@ -59,6 +59,92 @@ The run-time system takes care of the details of partitioning the input data, sc
 The abstraction is inspired by the *map* and *reduce* primitives present in Lisp and many other functioinal languages.
 
 ### Programming Model
+
+The computation takes a set of *input* key/value and produces a set of *outpu* key/value pairs. The user of the MapReduce library expresses the computation as 2 function, *Map* and *Reduce*.
+
+*Map*, written by user, takes an input pair and produces a set of *intermediate* key/value pairs. The MapReduce library groups together all intermediate values associated with the same intermediate key *I* and passes them to the *Reduce* function.
+
+TODO
+
+### Implementation
+
+![MapReduce-Fig](resource/mapreduce-fig.png)
+
+The right choice of MapReduce implementation depends on the environment.
+
+1. Split the input files into M pieces of typically 16-64 megabytes. And then drop them to GFS.
+1. There are M map tasks and R reduce tasks.
+1. A worker who is assigned a map task reads the contents, and it parses and passes each pair to Map function. The intermediate key/value pairs are buffered in memory.
+1. Periodically, buffered pairs are written to local disk, which partitioned into R regions by the partitioning function.
+1. Reduce worker reads the intermediate data, and it sorts it by the intermediate keys.
+1. For each unique key encountered, it passes the key and the corresponding set of intermediate values to the user's Reduce function. The output is to append to the final output file for this reduce partition.
+1. When all map tasks and reduce tasks have been completed, the MapReduce job finished.
+
+#### Fault Tolerance
+
+worker:
+
+1. heart beat to check whether worker lives
+1. reduce worker renames its temporary output file to final output file **atomically**
+1. re-excuted produces the same output; map tasks are re-executed, but reduce tasks not
+1. after re-executing one map task, all the reduce workers would be notified
+
+master:
+
+1. simply assume that master will not fail, but write checkpoints periodically
+
+#### Locality
+
+Master use the info of where the GFS stores the replica to schedule tasks to reduce remote IO.
+
+#### Backup Tasks
+
+When a MapReduce opeartion is close to completion, the master schedules backup executions of the remaining *in-progress* tasks.
+
+### Refinements
+
+- partitioning function
+- ordering guarantee
+- local execution
+    - alternative implementation which enables sequetial excution is developed
+- status information
+- counter
+
+#### Combiner Function
+
+We allow the user to specify an optional *Combiner* function that does partial merging of the data before it is sent over the network.
+
+#### Side-effects
+
+Atomic two-phase commits of multiple output files produced by a single task is not provided. Therefore, tasks that produce multiple output files with cross-file consistency requirements should be deterministic.
+
+### Performance
+
+#### Grep
+
+- $10^{10}$ 100-byte records
+- pattern is relatively rare, 92337 times occured
+- M=15000, R=1
+- 150 sec
+
+#### Sort
+
+- $10^{10}$ 100-byte records, roughly TB-sort
+- final sorted output is written to a set of 2-way replicated GFS files
+- a pre-pass MR operation will collect a sample of the keys and use the distribution to compute the split points, which is used in Map phase
+- M=15000, R=4000
+- 891 sec
+
+### Experience
+
+- first version of MapReduce is written in Feb 2013
+- significant enhancements were make in Aug 2013
+    - locality optimization
+    - dynamic load balancing
+
+### Others
+
+I simply put my code of mit 6.824 lab 1 here, to help you understand the programming model. And I do recommend that course.
 
 ```go
 // i simply copy my code of mit 6.824 lab 1 here
@@ -144,82 +230,6 @@ func doReduce(
 }
 ```
 
-### Implementation
-
-![MapReduce-Fig](resource/mapreduce-fig.png)
-
-The right choice of MapReduce implementation depends on the environment.
-
-1. Split the input files into M pieces of typically 16-64 megabytes. And then drop them to GFS.
-1. There are M map tasks and R reduce tasks.
-1. A worker who is assigned a map task reads the contents, and it parses and passes each pair to Map function. The intermediate key/value pairs are buffered in memory.
-1. Periodically, buffered pairs are written to local disk, which partitioned into R regions by the partitioning function.
-1. Reduce worker reads the intermediate data, and it sorts it by the intermediate keys.
-1. For each unique key encountered, it passes the key and the corresponding set of intermediate values to the user's Reduce function. The output is to append to the final output file for this reduce partition.
-1. When all map tasks and reduce tasks have been completed, the MapReduce job finished.
-
-#### Fault Tolerance
-
-worker:
-
-1. heart beat to check whether worker lives
-1. reduce worker renames its temporary output file to final output file **atomically**
-1. re-excuted produces the same output; map tasks are re-executed, but reduce tasks not
-1. after re-executing one map task, all the reduce workers would be notified
-
-master:
-
-1. simply assume that master will not fail, but write checkpoints periodically
-
-#### Locality
-
-Master use the info of where the GFS stores the replica to schedule tasks to reduce remote IO.
-
-#### Backup Tasks
-
-When a MapReduce opeartion is close to completion, the master schedules backup executions of the remaining *in-progress* tasks.
-
-### Refinements
-
-- partitioning function
-- ordering guarantee
-- local execution
-    - alternative implementation which enables sequetial excution is developed
-- status information
-- counter
-
-#### Combiner Function
-
-We allow the user to specify an optional *Combiner* function that does partial merging of the data before it is sent over the network.
-
-#### Side-effects
-
-Atomic two-phase commits of multiple output files produced by a single task is not provided. Therefore, tasks that produce multiple output files with cross-file consistency requirements should be deterministic.
-
-### Performance
-
-#### Grep
-
-- $10^{10}$ 100-byte records
-- pattern is relatively rare, 92337 times occured
-- M=15000, R=1
-- 150 sec
-
-#### Sort
-
-- $10^{10}$ 100-byte records, roughly TB-sort
-- final sorted output is written to a set of 2-way replicated GFS files
-- a pre-pass MR operation will collect a sample of the keys and use the distribution to compute the split points, which is used in Map phase
-- M=15000, R=4000
-- 891 sec
-
-### Experience
-
-- first version of MapReduce is written in Feb 2013
-- significant enhancements were make in Aug 2013
-    - locality optimization
-    - dynamic load balancing
-
 简单总结：
 
 - MapReduce要求map,reduce均无后效性
@@ -234,6 +244,8 @@ Atomic two-phase commits of multiple output files produced by a single task is n
 ## [The Google file system](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf)
 
 SOSP 2003.
+
+GFS provides fault tolerance while running on inexpensive commodity hardware, and it delivers high aggregate performance to a large number of clients.
 
 Traditional choices are reexamined and different points of design space are explored radically.
 
@@ -345,10 +357,10 @@ Writes:
 1. Client asks the master which chunkserver holds the current lease and the location of other replicas.
 1. Master replies.
 1. Client pushes the data to all the replicas; in any order.
-1. All replicas acknowledged, then the client sends a write request to primary, which idetifies the data pushed earlier to all of the replicas. The priamry assigns consecutive serial numbers to all the mutation it receives.
+1. All replicas acknowledged, then the client sends a write request to primary, which idetifies the data pushed earlier to all of the replicas. The priamry assigns consecutive serial numbers to all the mutation it receives, which provides the necessary serialization.
 1. The primary forwards the write request to all other replicas.
 1. Other replicas say completion.
-1. The primary replies to client.
+1. The primary replies to client. Any errors encountered at any of the replicas are reported to the client.
 
 #### Data Flow
 
@@ -361,7 +373,7 @@ Pipelining is helpful as dull-duplex links are used.
 GFS provides an atomic append operation called *record append*, which the client only provides data and GFS decides the offset. Record append is heavily used.
 
 Like the write flow, but there is extra logic. After the client pushing data to all replicas, it will send requests to the primary. The primary will check to see if appending the record to the current chunk would cause the chunk to the maximum size(64MB).
-If so, it pads the chunk to 64MB, and tell other replicas to do so and then replies to the client that the operation should be retried. Record append is restricted to be at most 1/4 of 64MB to deal with fragmentation.
+If so, it pads the chunk to 64MB, and tell other replicas to do so and then replies to the client that the operation should be retried on the next new chunk. Record append is restricted to be at most 1/4 of 64MB to deal with fragmentation.
 
 If a record append fails at any replica, the client retires the operation.
 GFS does not guarantee that all replicas are bytewise identical. And with padding, if the atomic append operation is success, the data must have been written at the same offset of all chunks.
@@ -405,6 +417,11 @@ After a file is deleted, GFS does not immediately reclaim the available physical
 ### Stale Replica Detection
 
 The master maintains a *chunk version number* to distinguish the up-to-date and stale replicas.
+Chunk replicas may become stale if a chunkserver fails and misses mutations to the chunk while it is down.
+
+Whenever the master grants a new lease on a chunk, it increases the chunk version number and informs the up-todate replicas.
+
+The master removes stale replicas in its regular garbage collection.
 
 ## Fault Tolerance and Diagnosis
 
@@ -426,7 +443,7 @@ The master maintains a *chunk version number* to distinguish the up-to-date and 
 2. 设计概览：  
 	a. 有master，master存元数据；是一个CP系统  
 	b. 文件被切成chunk，每个chunk有一个全局唯一的id(64bit)；每个chunk 64MB，三副本  
-3. 支持的操作：
+3. 为多client流式读/写优化
 
 
 ## [The Chubby lock service for loosely-coupled distributed systems](http://static.usenix.org/legacy/events/osdi06/tech/full_papers/burrows/burrows.pdf)
@@ -461,11 +478,11 @@ A lock service has some advantages over a client library:
 2. Many of our services that elect a primary or that partition data between their components need a mechanism for advertising the results, which suggests that we should allow clients to store and fetch small quantities of data, that is, to read and write small files.
 3. A lock-based interface is more familiar to our programmers.
 
-And, consensus service, which is not limited to lock service, is not better in above situations.
+And, consensus service, which is not limited to lock service, is not better in above situations (but much more complex).
 
 So design decisions are:
 
-1. We chose a lock service, as opposed to a library or service for consensus
+1. We chose a lock service, as opposed to a library or service for consensus.
 2. We chose to serve small-files to permit elected primaries to advertise themselves and their parameters, rather than build and maintain a second service.
 3. A service advertising its primary via a Chubby file may have thousands of clients. Therefore, we must allow thousands of clients to observe this file, preferably without needing many servers.
 4. Clients and replicas of a replicated service may wish to know when the service’s primary changes. This suggests that an event notification mechanism would be useful to avoid polling.
@@ -474,13 +491,13 @@ So design decisions are:
 7. To avoid both financial loss and jail time, we provide security mechanisms, including access control.
 
 Chubby itself usually has five replicas in each cell, of which three must be running for the cell to be up.
-We expect the locks are coarse-grained. These two styles of use suggest different requirements from a lock server.
+We expect the locks are coarse-grained rather than fine-grained. These two styles of use suggest different requirements from a lock server.
 
-Chubby is intended to provide only coarse-grained locking. Fortunately, it is straightforward for clients to implement their own fine-grained locks tailored to their application.
+Chubby is intended to provide only coarse-grained locking. Fortunately, it is straightforward for clients to implement their own fine-grained locks tailored to their application. 
 
 #### System Structure
 
-TODO Figure 1
+![System Structure](./resource/chubby-structure.png)
 
 The replicas use a distributed consensus protocol to elect a master; the master must obtain votes from a majority of the replicas, plus promises that those replicas will not elect a different master for an interval of a few seconds known as the *master lease*.
 
@@ -496,11 +513,30 @@ It then updates the DNS tables, replacing the IP address of the failed replica w
 
 #### Files, directories, and handles
 
-TODO
+Chubby exports a file system interface similar to, but simpler than that of UNIX; it is a tree.
+
+The name space contains only files and directories, collectively called *nodes*. Every such node has only one name within its cell.
+
+Nodes may be either permanent or ephemeral.
+Any node may be deleted explicitly, but ephemeral nodes are also deleted if no client has them open.
+
+The per-node meta-data includes four monotonically increasing 64-bit numbers that allow clients to detect changes easily:
+
+1. an instance number; greater than the instance number of any previous node with the same name
+2. a content generation number (files only); this increases when the file’s contents are written
+3. a lock generation number; this increases when the node’s lock transitions from *free* to *held*
+4. an ACL generation number; this increases when the node’s ACL names are written
+
 
 #### Locks and sequencers
 
 Each Chubby file and directory can act as a reader-writer lock.
+
+Like the mutexes known to most programmers, locks are advisory.
+
+In Chubby, acquiring a lock in either mode requires write permission so that an unprivileged reader cannot prevent a writer from making progress.
+
+
 
 It is costly to introduce sequence numbers into all the interactions in an existing complex system.
 Instead, Chubby provides a means by which sequence numbers can be introduced into only those interactions that make use of locks.
