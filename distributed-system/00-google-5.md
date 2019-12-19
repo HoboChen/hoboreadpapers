@@ -536,7 +536,7 @@ Like the mutexes known to most programmers, locks are advisory.
 
 In Chubby, acquiring a lock in either mode requires write permission so that an unprivileged reader cannot prevent a writer from making progress.
 
-
+Locking is complex in distributed systems because communication is typically uncertain, and processes may fail independently.
 
 It is costly to introduce sequence numbers into all the interactions in an existing complex system.
 Instead, Chubby provides a means by which sequence numbers can be introduced into only those interactions that make use of locks.
