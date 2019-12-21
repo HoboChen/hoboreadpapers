@@ -184,3 +184,4 @@ Switching directly from one configuration to another is unsafe because different
 1. Raft只有以下RPC:
 	a. RequestVote
 	b. AppendEntries
+1. 在任何时候，收到的Reply中如果包含了新的term，那么立刻退回follower状态
