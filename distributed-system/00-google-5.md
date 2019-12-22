@@ -531,9 +531,7 @@ The per-node meta-data includes four monotonically increasing 64-bit numbers tha
 #### Locks and sequencers
 
 Each Chubby file and directory can act as a reader-writer lock.
-
 Like the mutexes known to most programmers, locks are advisory.
-
 In Chubby, acquiring a lock in either mode requires write permission so that an unprivileged reader cannot prevent a writer from making progress.
 
 Locking is complex in distributed systems because communication is typically uncertain, and processes may fail independently.
@@ -541,11 +539,69 @@ Locking is complex in distributed systems because communication is typically unc
 It is costly to introduce sequence numbers into all the interactions in an existing complex system.
 Instead, Chubby provides a means by which sequence numbers can be introduced into only those interactions that make use of locks.
 
+At any time, a lock holder may request a sequencer, an opaque byte-string that describes the state of the lock immediately after acquisition.
+It contains the name of the lock, the mode in which it was acquired (exclusive or shared), and the lock generation number.
+The client passes the sequencer to services if it expects the operation to be protected by the lock.
+
+Although we find sequencers simple to use, important protocols evove slowly. Chubby therefore provides an imperfect but easier mechanism called lock-delay.
+
+#### Events
+
+Chubby clients may subscribe to a range of events when they create a handle.
+Events are delivered after the corresponding action has taken place.
+
+#### API
+
+- `Open()`
+	- how the handle will be used
+	- events should be delivered
+	- lock delay
+	- whether a new file or directory should (or must) be created
+- `Close()`
+- `GetContentAndStat()`
+- `SetContents()`
+- `SetACL()`
+- `Delete()`
+- `Acquire()`, `TryAcquire()`, `Release()`
+- `GetSequencer()`
+- `SetSequencer()`
+- `CheckSequencer()`
+
+Clients can use this API to perform primary election as follows: All potential primaries open the lock file and attempt to acquire the lock.
+One succeeds and becomes the primary, while the others act as replicas.
+The primary writes its identity into the lock file with SetContents() so that it can be found by clients and replicas, which read the file with GetContentsAndStat(), perhaps in response to a file-modification event.
+
+#### Caching
+
+To reduce read traffic, Chubby clients cache file data and node meta-data (including file absence) in a consistent, write-through cache held in memory.
+The cache is maintained by a lease mechanism.
+The protocol ensures that clients see either a consistent view of Chubby state, or an error.
+
+When file data or meta-data is to be changed, the modification is blocked while the master sends invalidations for the data to every client that may have cached it; this mechanism sits on top of KeepAlive RPCs.
+
+Despite the overheads of providing strict consistency, we rejected weaker models because we felt that programmers would find them harder to use.
+
+#### Sessions and KeepAlives
+
+A Chubby session is a relationship between a Chubby cell and a Chubby client; it exists for some interval of time, and is maintained by periodic handshakes called KeepAlives.
+
+Each session has an associated lease an interval of time extending into the future during which the master guarantees not to terminate the session unilaterally.
+
+The master advances the lease timeout in three circumstances:
+
+- on creation of the session
+- when a master fail-over occurs
+- it responds to a KeepAlive RPC from the client
+
+
+
 简单总结：
 
 1. Chubby是一个分布式锁服务，CA。
+1. 设计之初就是给系统逐步演进使用，所以不是一致性库，也不是一致性服务；而选择了一致性服务中的特殊一种——锁服务。
 2. 单纯的给粗粒度锁准备；一个锁至少会持有数个小时。在Chubby之上可以构建细粒度锁服务，而且看起来没有额外的语义/性能问题。
-3. 有client端的保证了一致性的缓存。
+1. 
+3. 客户端有保证了一致性的缓存。
 
 ## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
 
