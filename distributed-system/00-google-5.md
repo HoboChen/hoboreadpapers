@@ -591,17 +591,41 @@ The master advances the lease timeout in three circumstances:
 
 - on creation of the session
 - when a master fail-over occurs
-- it responds to a KeepAlive RPC from the client
+- it responds to a KeepAlive RPC from the client; default 12 seconds
 
+The client maintains a local lease timeout that is a conservative approximation of the master’s lease timeout.
 
+If a client’s local lease timeout expires, it becomes unsure whether the master has terminated its session.
+The client empties and disables its cache, and we say that its session is in *jeopardy*.
+The client waits a further interval called the grace period, 45s by default (election time).
+
+#### Failover
+
+![Figure 2]()
+
+A newly elected master proceeds:
+
+1. TODO
+
+#### Database Implementation
+
+The first version of Chubby used the replicated version of Berkeley DB.
+
+TODO
+
+### Mechanisms for scaling
+
+#### Proxies
+
+#### Partitioning
 
 简单总结：
 
 1. Chubby是一个分布式锁服务，CA。
 1. 设计之初就是给系统逐步演进使用，所以不是一致性库，也不是一致性服务；而选择了一致性服务中的特殊一种——锁服务。
 2. 单纯的给粗粒度锁准备；一个锁至少会持有数个小时。在Chubby之上可以构建细粒度锁服务，而且看起来没有额外的语义/性能问题。
-1. 
 3. 客户端有保证了一致性的缓存。
+4. 第一版的状态机直接使用了BDB，后来自己维护了一个有WAL和snapshot的DB，因为只需要原子操作而不需要事务。
 
 ## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
 
