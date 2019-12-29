@@ -449,13 +449,7 @@ The master removes stale replicas in its regular garbage collection.
 
 ## Fault Tolerance and Diagnosis
 
-## Measurements
-
-## Experiences
-
-## Related Work
-
-## Conclusions
+A chunk is broken up into 64KB blocks. Each has a corresponding 32 bit checksum. Like other metadata, checksums are kept in memory and stored persistently with logging, separate from user data.
 
 简单总结：
 
@@ -466,9 +460,9 @@ The master removes stale replicas in its regular garbage collection.
 	d. 吞吐比延迟重要；时刻有硬件故障  
 2. 设计概览：  
 	a. 有master，master存元数据；是一个CP系统  
-	b. 文件被切成chunk，每个chunk有一个全局唯一的id(64bit)；每个chunk 64MB，三副本  
+	b. 文件被切成chunk，每个chunk有一个全局唯一的id(64bit)；每个chunk 64MB，三副本
 3. 为多client流式读/写优化
-
+3. 写路径比较有趣；单个写的序列化在主replica上完成
 
 ## [The Chubby lock service for loosely-coupled distributed systems](http://static.usenix.org/legacy/events/osdi06/tech/full_papers/burrows/burrows.pdf)
 
@@ -635,13 +629,28 @@ A newly elected master proceeds:
 
 The first version of Chubby used the replicated version of Berkeley DB.
 
-TODO
+And then Chubby implements a database for itself.
+
+While Berkeley DB’s maintainers solved the problems we had, we felt that use of the replication code exposed us to more risk than we wished to take.
+Chubby used few of the features of Berkeley DB, and so this rewrite allowed significant simplification of the system as a whole; for example, while we needed atomic operations, we did not need general transactions.
 
 ### Mechanisms for scaling
 
+- We can create an arbitrary number of Chubby cells。
+- The master may increase lease times from the default 12s up to around 60s when it is under heavy load。
+
 #### Proxies
 
+A proxy can reduce server load by handling both KeepAlive and read requests; it cannot reduce write traffic, which passes through the proxy’s cache.
+But even with aggressive client caching, write traffic constitutes much less than one percent of Chubby’s normal workload
+
 #### Partitioning
+
+If enabled, a Chubby cell would be composed of N partitions, each of which has a set of replicas and a master. Every node D/C in directory D would be stored on the partition `P(D/C) = hash(D) mod N`.
+
+### Use, surprises and design errors
+
+
 
 简单总结：
 
@@ -649,6 +658,7 @@ TODO
 1. 设计之初就是给系统逐步演进使用，所以不是一致性库，也不是一致性服务；而选择了一致性服务中的特殊一种——锁服务。
 2. 单纯的给粗粒度锁准备；一个锁至少会持有数个小时。在Chubby之上可以构建细粒度锁服务，而且看起来没有额外的语义/性能问题。
 3. 客户端有保证了一致性的缓存。
+3. 可以通过Proxy和Partition来提高性能，前者是因为读写比极高（所以KeepAlive是系统绝大多数RPC）后者则更像一个强C弱AP的系统。
 4. 第一版的状态机直接使用了BDB，后来自己维护了一个有WAL和snapshot的DB，因为只需要原子操作而不需要事务。
 
 ## [Bigtable: A Distributed Storage System for Structured Data](http://static.usenix.org/event/osdi06/tech/chang/chang.pdf)
