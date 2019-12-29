@@ -64,7 +64,31 @@ The computation takes a set of *input* key/value and produces a set of *outpu* k
 
 *Map*, written by user, takes an input pair and produces a set of *intermediate* key/value pairs. The MapReduce library groups together all intermediate values associated with the same intermediate key *I* and passes them to the *Reduce* function.
 
-TODO
+#### Word Frequency
+
+```
+map(String key, String value):
+	for each word w in value:
+		EmitIntermediate(w, "1")
+
+reduce(String key, Iterator values):
+	int result = 0
+	for each v in values:
+		result += ParseInt(v);
+	Emit(AsString(result))
+```
+
+#### More Examples
+
+- Distributed Grep:
+	- map emits if the line matches
+	- seems only one reducer is needed
+- Count of URL Access Frequency:
+	- just like word frequency
+- Reverse Web-Link Graph
+	- map emits `<target, source>`
+	- reduce `<target, list<source>>`
+- etc
 
 ### Implementation
 
