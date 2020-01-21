@@ -550,12 +550,43 @@ The per-node meta-data includes four monotonically increasing 64-bit numbers tha
 
 Each Chubby file and directory can act as a reader-writer lock.
 Like the mutexes known to most programmers, locks are advisory.
+For why we reject *mandatory* locks:
+
+- Chubby locks not only protect the file
+- To make debugging and administrative operations easier
+- Our developers perform error checking in the conventional way
+
 In Chubby, acquiring a lock in either mode requires write permission so that an unprivileged reader cannot prevent a writer from making progress.
 
 Locking is complex in distributed systems because communication is typically uncertain, and processes may fail independently.
 
 It is costly to introduce sequence numbers into all the interactions in an existing complex system.
 Instead, Chubby provides a means by which sequence numbers can be introduced into only those interactions that make use of locks.
+At any time, a lock holder may request a *sequencer*, an opaque byte-string that describes the state of the lock immediately after acquisition.
+The chubby client passes the sequencer to servers which requires the operations to be protected by the lock. The recipent of the sequencer is expected to test whether the sequencer is still valid and has the appropriate mode.
+
+If sequencer is not available, then *lock-delay* is simple and easy to prove correctness.
+
+#### Events
+
+Chubby clients may subscribe to a range of events when they create a handle.
+
+#### API
+
+#### Caching
+
+To reduce read traffic, Chubby clients cache file data and node meta-data (including file absence) in a consistent, write-through cache held in memory.
+The cache is maintained by a lease mechanism described below, and kept consistent by invalidations sent by the master, which keeps a list of what each client may be caching.
+
+When file data or meta-data is to be changed, the modification is blocked while the master sends invalidations for the data to every client that may have cached it; this mechanism sits on top of KeepAlive RPCs, discussed more fully in the next section.
+
+#### Sessions and KeepAlives
+
+A Chubby session is a relationship between a Chubby cell and a Chubby client; it exists for some interval of time, and is maintained by periodic handshakes called KeepAlives.
+
+#### Failover
+
+
 
 At any time, a lock holder may request a sequencer, an opaque byte-string that describes the state of the lock immediately after acquisition.
 It contains the name of the lock, the mode in which it was acquired (exclusive or shared), and the lock generation number.
