@@ -15,7 +15,7 @@ Frangipani has a very simple internal structure, and features:
 
 Petal provides virtual disks.
 
-[Figure 1]
+![Figure 1](../resource/frangipani-0.pdf)
 
 Multiple interchangeable Frangipani servers provide access to the same files by running on top of a shared Petal virtual disk, coordinat ing their actions with locks to ensure coherence. 
 
