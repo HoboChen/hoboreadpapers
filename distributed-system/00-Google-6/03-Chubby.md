@@ -49,7 +49,7 @@ Chubby is intended to provide only coarse-grained locking. Fortunately, it is st
 
 #### System Structure
 
-![System Structure](./resource/chubby-structure.png)
+![System Structure](../resource/chubby-structure.png)
 
 The replicas use a distributed consensus protocol to elect a master; the master must obtain votes from a majority of the replicas, plus promises that those replicas will not elect a different master for an interval of a few seconds known as the *master lease*.
 
