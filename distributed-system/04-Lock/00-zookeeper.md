@@ -31,4 +31,43 @@ All `znode`s store data, and all znodes, except for ephemeral znodes, can have c
 
 #### Data Model
 
-The data model of ZooKeeper is essentially a file system with a simplified API and only full data reads and writes.
+The data model of ZooKeeper is essentially a file system with a simplified API and only full data reads and writes or a k/v table with hierarchical keys.
+
+#### Sessions
+
+A client connects to ZooKeeper and initiates a session. There is associated timeout.
+
+### Client API
+
+```cpp
+create(path, data, flags)
+
+delete(path, version)
+
+exists(path, watch)
+
+getData(path, watch)
+
+setData(path, data, version)
+
+getChildren(path, watch)
+
+sync(path) // the path is currently ignored
+```
+
+All methods have both sync and async API. For async APIs, it guarantess that corresponding callbacks for each API call are invoked in order.
+
+Because only update requests are A-linearizable, ZooKeeper processes read requests locally at each replica.
+
+Q: "This problem is solved by the ordering guarantee for the notifications: if a client is watching for a change, the client will see the notification event before it sees the new state of the system after the change is made."
+
+Another problem can arise when clients have their own communication channels in addition to ZooKeeper.
+For example, consider two clients A and B that have a shared  configuration in ZooKeeper and communicate through a shared communication channel.
+
+Using the above guarantees B can make sure that it sees the most up-to-date information by issuing a write before re-reading the configuration.
+
+To handle this scenario more efficiently ZooKeeper provides the `sync` request: when followed by a read, constitutes a *slow read*.
+
+### Examples of primitives
+
+The ZooKeeper service knows nothing about these more powerful primitives since they are entirely implemented at the client using the ZooKeeper client API.
