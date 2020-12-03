@@ -2,7 +2,7 @@
 
 ## Abstract and Introduction
 
-In this paper, we describe ZooKeeper, a service for coordinating processes of distributed applications.
+ZooKeeper, a service for coordinating processes of distributed applications.
 It incorporates elements from group messaging, shared registers, and distributed lock services in a replicated, centralized service.
 The interface exposed by ZooKeeper has the wait-free aspects of shared registers with an event-driven mechanism similar to cache invalidations of distributed file systems to provide a simple, yet powerful coordination service.
 
@@ -62,7 +62,7 @@ Because only update requests are A-linearizable, ZooKeeper processes read reques
 Q: "This problem is solved by the ordering guarantee for the notifications: if a client is watching for a change, the client will see the notification event before it sees the new state of the system after the change is made."
 
 Another problem can arise when clients have their own communication channels in addition to ZooKeeper.
-For example, consider two clients A and B that have a shared  configuration in ZooKeeper and communicate through a shared communication channel.
+For example, consider two clients A and B that have a shared configuration in ZooKeeper and communicate through a shared communication channel.
 
 Using the above guarantees B can make sure that it sees the most up-to-date information by issuing a write before re-reading the configuration.
 
@@ -71,3 +71,7 @@ To handle this scenario more efficiently ZooKeeper provides the `sync` request: 
 ### Examples of primitives
 
 The ZooKeeper service knows nothing about these more powerful primitives since they are entirely implemented at the client using the ZooKeeper client API.
+
+#### Simple Lock
+
+Q: What is herd effect?
