@@ -75,3 +75,13 @@ The ZooKeeper service knows nothing about these more powerful primitives since t
 #### Simple Lock
 
 Q: What is herd effect?
+
+## ZooKeeper Implementation
+
+### Atomic Broadcast
+
+But since Zab does not persistently record the id of every message delivered, Zab may redeliver a message during recovery; but it is harmless as all the operations are idempotent.
+
+### Replicated Database
+
+They do not lock the ZooKeeper when snapshotting, so the snapshot is called *fuzzy* snapshot.
