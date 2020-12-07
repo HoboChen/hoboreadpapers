@@ -1,4 +1,4 @@
-# ZooKeeper: Wait-free coordination for Internet-scale systems
+# [ZooKeeper: Wait-free coordination for Internet-scale systems](https://static.usenix.org/event/atc10/tech/full_papers/Hunt.pdf)
 
 ## Abstract and Introduction
 
@@ -78,6 +78,12 @@ Q: What is herd effect?
 
 ## ZooKeeper Implementation
 
+### Request Processor
+
+When the leader receives a write request, it calculates what the state of the system will be when the write is applied and transforms it into a transaction that captures this new state.
+
+The future state must be calculated because there may be outstanding transactions that have not yet been applied to the database.
+
 ### Atomic Broadcast
 
 But since Zab does not persistently record the id of every message delivered, Zab may redeliver a message during recovery; but it is harmless as all the operations are idempotent.
@@ -85,3 +91,19 @@ But since Zab does not persistently record the id of every message delivered, Za
 ### Replicated Database
 
 They do not lock the ZooKeeper when snapshotting, so the snapshot is called *fuzzy* snapshot.
+As all the operations are idempotent, so not locking is good.
+
+### Client
+
+Only the server that a client is connected to tracks and triggers notification for that client.
+
+This primitive executes asynchronously and is ordered by the leader after all pending writes to its local replica.
+
+If the client has a more recent view than the server, the server does not reestablish the session with the client until the server has caught up.
+
+## 简单总结：
+
+1. Wait-free coordination, watch, idempotent.
+2. Zab协议，。
+3. 只提供wait-free语义，实用一些的语义（比如锁）由client实现，server并不知道。
+4. 本地读，如果需要强一致语义，有一个专门的`sync` API。
